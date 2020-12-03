@@ -1,6 +1,6 @@
 # computer-desk
 Arduino code to control an LED strip that is built into a computer desk via an IR remote.
-![Main](https://github.com/ajschwieterman/computer-desk/blob/master/main.jpeg)
+![Main](https://github.com/ajschwieterman/computer-desk/blob/main/main.jpeg)
 
 # Hardware
 - [Adafruit NeoPixels](https://www.adafruit.com/product/1138?length=1)
@@ -10,10 +10,10 @@ Arduino code to control an LED strip that is built into a computer desk via an I
 
 # Schematic
 Below is the wiring that I used to supply 5V of power to the NeoPixels and controller.  I merged a USB-A male connector and micro-USB male connector and added an in-line capacitor.
-![Main](https://github.com/ajschwieterman/computer-desk/blob/master/power.png)
+![Main](https://github.com/ajschwieterman/computer-desk/blob/main/power.png)
 
 Below is the circuit diagram for the IR receiver sensor and NeoPixels.
-![Main](https://github.com/ajschwieterman/computer-desk/blob/master/schematic.png)
+![Main](https://github.com/ajschwieterman/computer-desk/blob/main/schematic.png)
 
 # Required Arduino libraries
 - [FastLED v3.3.0](https://github.com/FastLED/FastLED)
