@@ -1,5 +1,6 @@
 # computer-desk
 Arduino code to control an LED strip that is built into a computer desk via an IR remote.
+
 ![Main](https://github.com/ajschwieterman/computer-desk/blob/main/main.jpg)
 
 # Hardware
