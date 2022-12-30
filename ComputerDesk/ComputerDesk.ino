@@ -1,569 +1,493 @@
-#include <FastLED.h>
-#include <IRremote.h>
+#include <Adafruit_NeoPixel.h>
+#include <Arduino.h>
+#include <arduino_homekit_server.h>
+#include <ESP8266WiFi.h>
+#include <IRrecv.h>
+#include <IRremoteESP8266.h>
 
-#ifndef BRIGHTNESS_RISE_CODE
-#define LED_PIN                       12
-#define IR_PIN                        23
-#define NUM_OF_LEDS                   65
-#define MIN_BRIGHTNESS                1
-#define MAX_BRIGHTNESS                25
-#define MIN_DELAY_TIME                50
-#define MAX_DELAY_TIME                3350
-#define BRIGHTNESS_RISE_CODE		      0xFF3AC5
-#define BRIGHTNESS_FALL_CODE 		      0xFFBA45
-#define ON_OFF_CODE					          0xFF02FD
-#define PAUSE_RUN_CODE				        0xFF827D
-#define STATIC_RED_CODE				        0xFF1AE5
-#define STATIC_ORANGE_CODE			      0xFF2AD5
-#define STATIC_DARK_YELLOW_CODE		    0xFF0AF5
-#define STATIC_YELLOW_CODE			      0xFF38C7
-#define STATIC_LIGHT_YELLOW_CODE	    0xFF18E7
-#define STATIC_GREEN_CODE			        0xFF9A65
-#define STATIC_LIGHT_GREEN_CODE		    0xFFAA55
-#define STATIC_CYAN_CODE			        0xFF8A75
-#define STATIC_LIGHT_BLUE_CODE		    0xFFB847
-#define STATIC_SKY_BLUE_CODE 		      0xFF9867
-#define STATIC_BLUE_CODE			        0xFFA25D
-#define STATIC_DARK_BLUE_CODE		      0xFF926D
-#define STATIC_LYONS_BLUE_CODE		    0xFFB24D
-#define STATIC_PURPLE_CODE			      0xFF7887
-#define STATIC_BROWN_CODE			        0xFF58A7
-#define STATIC_WHITE_CODE			        0xFF22DD
-#define STATIC_MILK_WHITE_CODE		    0xFF12ED
-#define STATIC_WHITE_PINK_CODE		    0xFF32CD
-#define STATIC_GREEN_WHITE_CODE		    0xFFD827
-#define STATIC_BLUE_WHITE			        0xFFF807
-#define INCREASE_RED_CODE			        0xFF28D7
-#define DECREASE_RED_CODE			        0xFF08F7
-#define INCREASE_GREEN_CODE			      0xFFA857
-#define DECREASE_GREEN_CODE			      0xFF8877
-#define INCREASE_BLUE_CODE			      0xFF6897
-#define DECREASE_BLUE_CODE			      0xFF48B7
-#define SPEED_UP_CODE				          0xFFE817
-#define SPEED_DOWN_CODE				        0xFFC837
-#define DIY_KEY_1_CODE				        0xFF30CF
-#define DIY_KEY_2_CODE				        0xFFB04F
-#define DIY_KEY_3_CODE				        0xFF708F
-#define DIY_KEY_4_CODE				        0xFF10EF
-#define DIY_KEY_5_CODE				        0xFF906F
-#define DIY_KEY_6_CODE				        0xFF50AF
-#define AUTOMATIC_CHANGE_CODE		      0xFFF00F
-#define FLASH_ON_AND_OFF_CODE		      0xFFD02F
-#define THREE_COLOR_JUMPY_CHANGE_CODE	0xFF20DF
-#define SEVEN_COLOR_JUMPY_CHANGE_CODE	0xFFA05F
-#define THREE_COLOR_FADE_CHANGE_CODE	0xFF609F
-#define SEVEN_COLOR_FADE_CHANGE_CODE	0xFFE01F
-#define HOLD_CODE				              0xFFFFFFFF
-#endif
+#define IR_RECEIVER_PIN           12
+#define NEOPIXEL_COUNT            65
+#define NEOPIXEL_PIN              14
+#define BLUE_DECREASE_CODE        0xFF48B7
+#define BLUE_INCREASE_CODE        0xFF6897
+#define BRIGHTNESS_DECREASE_CODE  0xFFBA45
+#define BRIGHTNESS_INCREASE_CODE  0xFF3AC5
+#define DIY_KEY_1_CODE            0xFF30CF
+#define DIY_KEY_2_CODE            0xFFB04F
+#define DIY_KEY_3_CODE            0xFF708F
+#define DIY_KEY_4_CODE            0xFF10EF
+#define DIY_KEY_5_CODE            0xFF906F
+#define DIY_KEY_6_CODE            0xFF50AF
+#define GREEN_DECREASE_CODE       0xFF8877
+#define GREEN_INCREASE_CODE       0xFFA857
+#define ON_OFF_CODE               0xFF02FD
+#define RED_DECREASE_CODE         0xFF08F7
+#define RED_INCREASE_CODE         0xFF28D7
+#define STATIC_BLUE_CODE          0xFFA25D
+#define STATIC_BLUE_WHITE         0xFFF807
+#define STATIC_BROWN_CODE         0xFF58A7
+#define STATIC_CYAN_CODE          0xFF8A75
+#define STATIC_DARK_BLUE_CODE     0xFF926D
+#define STATIC_DARK_YELLOW_CODE   0xFF0AF5
+#define STATIC_GREEN_CODE         0xFF9A65
+#define STATIC_GREEN_WHITE_CODE   0xFFD827
+#define STATIC_LIGHT_BLUE_CODE    0xFFB847
+#define STATIC_LIGHT_GREEN_CODE   0xFFAA55
+#define STATIC_LIGHT_YELLOW_CODE  0xFF18E7
+#define STATIC_LYONS_BLUE_CODE    0xFFB24D
+#define STATIC_MILK_WHITE_CODE    0xFF12ED
+#define STATIC_ORANGE_CODE        0xFF2AD5
+#define STATIC_PURPLE_CODE        0xFF7887
+#define STATIC_RED_CODE           0xFF1AE5
+#define STATIC_SKY_BLUE_CODE      0xFF9867
+#define STATIC_WHITE_CODE         0xFF22DD
+#define STATIC_WHITE_PINK_CODE    0xFF32CD
+#define STATIC_YELLOW_CODE        0xFF38C7
+#define WIFI_SSID                 ""
+#define WIFI_PASSWORD             ""
 
-const CRGB BLACK_COLOR = CRGB(0, 0, 0);
-const CRGB RED_COLOR = CRGB(255, 0, 0);
-const CRGB ORANGE_COLOR = CRGB(255, 64, 0);
-const CRGB DARK_YELLOW_COLOR = CRGB(255, 128, 0);
-const CRGB YELLOW_COLOR = CRGB(255, 192, 0);
-const CRGB LIGHT_YELLOW_COLOR = CRGB(255, 255, 0);
-const CRGB GREEN_COLOR = CRGB(0, 255, 0);
-const CRGB LIGHT_GREEN_COLOR = CRGB(0, 255, 128);
-const CRGB CYAN_COLOR = CRGB(0, 255, 192);
-const CRGB LIGHT_BLUE_COLOR = CRGB(0, 192, 255);
-const CRGB SKY_BLUE_COLOR = CRGB(0, 128, 255);
-const CRGB BLUE_COLOR = CRGB(0, 0, 255);
-const CRGB DARK_BLUE_COLOR = CRGB(64, 0, 255);
-const CRGB LYONS_BLUE_COLOR = CRGB(128, 0, 255);
-const CRGB PURPLE_COLOR = CRGB(192, 0, 255);
-const CRGB BROWN_COLOR = CRGB(255, 0, 255);
-const CRGB WHITE_COLOR = CRGB(255, 255, 255);
-const CRGB MILK_WHITE_COLOR = CRGB(255, 128, 255);
-const CRGB WHITE_PINK_COLOR = CRGB(255, 225, 255);
-const CRGB GREEN_WHITE_COLOR = CRGB(225, 255, 255);
-const CRGB BLUE_WHITE_COLOR = CRGB(128, 255, 255);
-CRGB DIY_COLOR_1 = WHITE_COLOR;
-CRGB DIY_COLOR_2 = WHITE_COLOR;
-CRGB DIY_COLOR_3 = WHITE_COLOR;
-CRGB DIY_COLOR_4 = WHITE_COLOR;
-CRGB DIY_COLOR_5 = WHITE_COLOR;
-CRGB DIY_COLOR_6 = WHITE_COLOR;
+/* Define color spaces */
+typedef struct {
+  float hue;
+  float saturation;
+  float value;
+} hsv_t;
+typedef struct {
+  float red;
+  float green;
+  float blue;
+} rgb_t;
 
-CRGB ledStrip[NUM_OF_LEDS];
-IRrecv irReceiver(IR_PIN);
+/* Define hardware */
+IRrecv irReceiver(IR_RECEIVER_PIN);
+Adafruit_NeoPixel neopixels(NEOPIXEL_COUNT, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800);
+
+/* Define HomeKit configuration */
+extern "C" homekit_server_config_t homekitConfiguration;
+extern "C" homekit_characteristic_t homekitOnOffCharacteristic;
+extern "C" homekit_characteristic_t homekitBrightnessCharacteristic;
+extern "C" homekit_characteristic_t homekitSaturationCharacteristic;
+extern "C" homekit_characteristic_t homekitHueCharacteristic;
+
+/* Other variables */
+hsv_t* activeDiyColor;
+hsv_t diyColor1 = {0.0f, 0.0f, 0.0f};
+hsv_t diyColor2 = {0.0f, 0.0f, 0.0f};
+hsv_t diyColor3 = {0.0f, 0.0f, 0.0f};
+hsv_t diyColor4 = {0.0f, 0.0f, 0.0f};
+hsv_t diyColor5 = {0.0f, 0.0f, 0.0f};
+hsv_t diyColor6 = {0.0f, 0.0f, 0.0f};
 decode_results irDecoder;
-CRGB currentColor;
-CRGB fromFadeColor;
-CRGB toFadeColor;
-unsigned long currentTime;
-unsigned long oldCurrentTime;
-unsigned long previousTime;
-unsigned long delayTime = 500;
-unsigned long currentMode;
-int autoModeIndex;
-int maxAutoModeIndex;
-int ledBrightness = 10;
-boolean isRunningAnimation;
-boolean isOn;
+bool updateLeds = false;
 
 void setup() {
-  //Start the serial monitor
-//  Serial.begin(9600);
-//  while (!Serial) {  // Wait for the serial connection to be establised.
-//    delay(50);
-//  }
-
-  //Start the LED service
-  FastLED.addLeds<NEOPIXEL, LED_PIN>(ledStrip, NUM_OF_LEDS);
-
-  //Start the IR receiver
+  /* Start the serial monitor */
+  // Serial.begin(115200);
+  /* Start the IR Receiver service */
   irReceiver.enableIRIn();
+  /* Start the NeoPixel service */
+  neopixels.begin();
+  neopixels.clear();
+  neopixels.show();
+  /* Start the Wi-Fi service */
+  WiFi.disconnect();
+  WiFi.persistent(false);
+  WiFi.mode(WIFI_STA);
+  WiFi.setAutoReconnect(true);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  while (!WiFi.isConnected()) {
+		delay(100);
+	}
+  /* Start the HomeKit service */
+  homekitOnOffCharacteristic.setter = setOnOffState;
+  homekitBrightnessCharacteristic.setter = setBrightness;
+  homekitSaturationCharacteristic.setter = setSaturation;
+  homekitHueCharacteristic.setter = setHue;
+  // homekit_storage_reset();
+	arduino_homekit_setup(&homekitConfiguration);
 }
 
-void loop() { 
-  //Get the current time
-  oldCurrentTime = currentTime;
-  currentTime = millis();
-  
-  //If a button on the remote was pressed, get the button code
+//------------------------------------------------------------------------------------------------------------------------
+
+void loop() {
+  /* Monitor any inputs from the IR receiver */
+  ir_receiver_loop();
+  /* Monitor any changes from HomeKit */
+  arduino_homekit_loop();
+  /* Change the color of the LEDs after receiving the inputs */
+  neopixels_loop();
+}
+
+//------------------------------------------------------------------------------------------------------------------------
+
+/**
+ * The IR receiver loop monitors for any messages received from the IR remote. Once a valid message is received, the 
+ * NeoPixels are updated based on the what message was received. The remote has buttons that can change the brightness 
+ * and color of the LEDs through static buttons or provide custom colors with variable RGB values.
+ */
+void ir_receiver_loop() {
   if (irReceiver.decode(&irDecoder)) {
-  	//Ignore a button being held
-  	if (irDecoder.value != HOLD_CODE) {
+    if (irDecoder.decode_type == NEC) {
+      /* Change the LEDs on/off state if the power button was pressed */
       if (irDecoder.value == ON_OFF_CODE) {
-        isOn = !isOn;
-        if (isOn) {
-          autoModeIndex = 0;
-          previousTime = currentTime;
-          isRunningAnimation = true;
-        }
+        setOnOffState(!homekitOnOffCharacteristic.value.bool_value);
       }
-      if (isOn) {
-        switch (irDecoder.value) {
-          case STATIC_RED_CODE:
-          case STATIC_ORANGE_CODE:
-          case STATIC_DARK_YELLOW_CODE:
-          case STATIC_YELLOW_CODE:
-          case STATIC_LIGHT_YELLOW_CODE:
-          case STATIC_GREEN_CODE:
-          case STATIC_LIGHT_GREEN_CODE:
-          case STATIC_CYAN_CODE:
-          case STATIC_LIGHT_BLUE_CODE:
-          case STATIC_SKY_BLUE_CODE:
-          case STATIC_BLUE_CODE:
-          case STATIC_DARK_BLUE_CODE:
-          case STATIC_LYONS_BLUE_CODE:
-          case STATIC_PURPLE_CODE:
-          case STATIC_BROWN_CODE:
-          case STATIC_WHITE_CODE:
-          case STATIC_MILK_WHITE_CODE:
-          case STATIC_WHITE_PINK_CODE:
-          case STATIC_GREEN_WHITE_CODE:
-          case STATIC_BLUE_WHITE:
+      /* Change the LEDs color if they are on */
+      if (homekitOnOffCharacteristic.value.bool_value) {
+        switch(irDecoder.value) {
+          case BLUE_DECREASE_CODE:
+            adjustDiyColor(0.0f, 0.0f, -4.0f);
+            break;
+          case BLUE_INCREASE_CODE:
+            adjustDiyColor(0.0f, 0.0f, 4.0f);
+            break;
+          case BRIGHTNESS_DECREASE_CODE:
+            setBrightness(max(homekitBrightnessCharacteristic.value.int_value - 10, 0));
+            break;
+          case BRIGHTNESS_INCREASE_CODE:
+            setBrightness(min(homekitBrightnessCharacteristic.value.int_value + 10, 100));
+            break;
           case DIY_KEY_1_CODE:
+            setDiyColor(&diyColor1);
+            break;
           case DIY_KEY_2_CODE:
+            setDiyColor(&diyColor2);
+            break;
           case DIY_KEY_3_CODE:
+            setDiyColor(&diyColor3);
+            break;
           case DIY_KEY_4_CODE:
+            setDiyColor(&diyColor4);
+            break;
           case DIY_KEY_5_CODE:
+            setDiyColor(&diyColor5);
+            break;
           case DIY_KEY_6_CODE:
-            autoModeIndex = 0;
-            maxAutoModeIndex = 0;
-            currentMode = irDecoder.value;
-            previousTime = currentTime;
-            isRunningAnimation = false;
+            setDiyColor(&diyColor6);
             break;
-          case FLASH_ON_AND_OFF_CODE:
-            autoModeIndex = 0;
-            maxAutoModeIndex = 1;
-            currentMode = irDecoder.value;
-            previousTime = currentTime;
-            isRunningAnimation = true;
+          case GREEN_DECREASE_CODE:
+            adjustDiyColor(0.0f, -4.0f, 0.0f);
             break;
-          case THREE_COLOR_JUMPY_CHANGE_CODE:
-          case THREE_COLOR_FADE_CHANGE_CODE:
-            autoModeIndex = 0;
-            maxAutoModeIndex = 2;
-            currentMode = irDecoder.value;
-            previousTime = currentTime;
-            isRunningAnimation = true;
+          case GREEN_INCREASE_CODE:
+            adjustDiyColor(0.0f, 4.0f, 0.0f);
             break;
-          case SEVEN_COLOR_JUMPY_CHANGE_CODE:
-          case SEVEN_COLOR_FADE_CHANGE_CODE:
-            autoModeIndex = 0;
-            maxAutoModeIndex = 6;
-            currentMode = irDecoder.value;
-            previousTime = currentTime;
-            isRunningAnimation = true;
+          case RED_DECREASE_CODE:
+            adjustDiyColor(-4.0f, 0.0f, 0.0f);
             break;
-          case AUTOMATIC_CHANGE_CODE:
-            autoModeIndex = 0;
-            maxAutoModeIndex = 23;
-            currentMode = irDecoder.value;
-            previousTime = currentTime;
-            isRunningAnimation = true;
+          case RED_INCREASE_CODE:
+            adjustDiyColor(4.0f, 0.0f, 0.0f);
             break;
-          case INCREASE_RED_CODE:
-          case DECREASE_RED_CODE:
-          case INCREASE_GREEN_CODE:
-          case DECREASE_GREEN_CODE:
-          case INCREASE_BLUE_CODE:
-          case DECREASE_BLUE_CODE:
-            switch (currentMode) {
-              case DIY_KEY_1_CODE:
-                DIY_COLOR_1 = adjustDiyColor(DIY_COLOR_1, irDecoder.value);
-                break;
-              case DIY_KEY_2_CODE:
-                DIY_COLOR_2 = adjustDiyColor(DIY_COLOR_2, irDecoder.value);
-                break;
-              case DIY_KEY_3_CODE:
-                DIY_COLOR_3 = adjustDiyColor(DIY_COLOR_3, irDecoder.value);
-                break;
-              case DIY_KEY_4_CODE:
-                DIY_COLOR_4 = adjustDiyColor(DIY_COLOR_4, irDecoder.value);
-                break;
-              case DIY_KEY_5_CODE:
-                DIY_COLOR_5 = adjustDiyColor(DIY_COLOR_5, irDecoder.value);
-                break;
-              case DIY_KEY_6_CODE:
-                DIY_COLOR_6 = adjustDiyColor(DIY_COLOR_6, irDecoder.value);
-                break;
-            }
+          case STATIC_BLUE_CODE:
+            setStaticColor(240.0f, 100.0f);
             break;
-          case BRIGHTNESS_RISE_CODE:
-          case BRIGHTNESS_FALL_CODE:
-            if (maxAutoModeIndex == 0) {
-              switch (irDecoder.value) {
-                case BRIGHTNESS_RISE_CODE:
-                  ledBrightness = min(ledBrightness + 1, MAX_BRIGHTNESS);
-                  break;
-                case BRIGHTNESS_FALL_CODE:
-                  ledBrightness = max(ledBrightness - 1, MIN_BRIGHTNESS);
-                  break;
-              }
-            }
+          case STATIC_BLUE_WHITE:
+            setStaticColor(300.0f, 50.0f);
             break;
-          case SPEED_UP_CODE:
-          case SPEED_DOWN_CODE:
-            if (maxAutoModeIndex > 0) {
-              switch (irDecoder.value) {
-                case SPEED_UP_CODE:
-                  delayTime = max(delayTime - 10, MIN_DELAY_TIME);
-                  break;
-                case SPEED_DOWN_CODE:
-                  delayTime = min(delayTime + 10, MAX_DELAY_TIME);
-                  break;
-              }
-            }
+          case STATIC_BROWN_CODE:
+            setStaticColor(300.0f, 100.0f);
             break;
-          case PAUSE_RUN_CODE:
-            if (maxAutoModeIndex > 0) {
-              isRunningAnimation = !isRunningAnimation;
-            }
+          case STATIC_CYAN_CODE:
+            setStaticColor(165.0f, 100.0f);
+            break;
+          case STATIC_DARK_BLUE_CODE:
+            setStaticColor(255.0f, 100.0f);
+            break;
+          case STATIC_DARK_YELLOW_CODE:
+            setStaticColor(30.0f, 100.0f);
+            break;
+          case STATIC_GREEN_CODE:
+            setStaticColor(120.0f, 100.0f);
+            break;
+          case STATIC_GREEN_WHITE_CODE:
+            setStaticColor(180.0f, 12.5f);
+            break;
+          case STATIC_LIGHT_BLUE_CODE:
+            setStaticColor(195.0f, 100.0f);
+            break;
+          case STATIC_LIGHT_GREEN_CODE:
+            setStaticColor(150.0f, 100.0f);
+            break;
+          case STATIC_LIGHT_YELLOW_CODE:
+            setStaticColor(60.0f, 100.0f);
+            break;
+          case STATIC_LYONS_BLUE_CODE:
+            setStaticColor(270.0f, 100.0f);
+            break;
+          case STATIC_MILK_WHITE_CODE:
+            setStaticColor(300.0f, 50.0f);
+            break;
+          case STATIC_ORANGE_CODE:
+            setStaticColor(15.0f, 100.0f);
+            break;
+          case STATIC_PURPLE_CODE:
+            setStaticColor(285.0f, 100.0f);
+            break;
+          case STATIC_RED_CODE:
+            setStaticColor(0.0f, 100.0f);
+            break;
+          case STATIC_SKY_BLUE_CODE:
+            setStaticColor(210.0f, 100.0f);
+            break;
+          case STATIC_WHITE_CODE:
+            setStaticColor(0.0f, 0.0f);
+            break;
+          case STATIC_WHITE_PINK_CODE:
+            setStaticColor(300.0f, 12.5f);
+            break;
+          case STATIC_YELLOW_CODE:
+            setStaticColor(45.0f, 100.0f);
             break;
         }
       }
-  	}
+    }
+    /* Prepare the IR receiver for a new code */
     irReceiver.resume();
   }
-
-  //Set the color of the LEDs
-  if (!isRunningAnimation || !isOn) {
-    previousTime += (currentTime - oldCurrentTime);
-  }
-  if ((currentTime - previousTime) > delayTime) {
-    if (autoModeIndex == maxAutoModeIndex) {
-      autoModeIndex = 0;
-    } else {
-      ++autoModeIndex;
-    }
-    previousTime = currentTime;
-  }
-  switch (currentMode) {
-    case STATIC_RED_CODE:
-      fromFadeColor = RED_COLOR;
-      toFadeColor = RED_COLOR;
-      break;
-    case STATIC_ORANGE_CODE:
-      fromFadeColor = ORANGE_COLOR;
-      toFadeColor = ORANGE_COLOR;
-      break;
-    case STATIC_DARK_YELLOW_CODE:
-      fromFadeColor = DARK_YELLOW_COLOR;
-      toFadeColor = DARK_YELLOW_COLOR;
-      break;
-    case STATIC_YELLOW_CODE:
-      fromFadeColor = YELLOW_COLOR;
-      toFadeColor = YELLOW_COLOR;
-      break;
-    case STATIC_LIGHT_YELLOW_CODE:
-      fromFadeColor = LIGHT_YELLOW_COLOR;
-      toFadeColor = LIGHT_YELLOW_COLOR;
-      break;
-    case STATIC_GREEN_CODE:
-      fromFadeColor = GREEN_COLOR;
-      toFadeColor = GREEN_COLOR;
-      break;
-    case STATIC_LIGHT_GREEN_CODE:
-      fromFadeColor = LIGHT_GREEN_COLOR;
-      toFadeColor = LIGHT_GREEN_COLOR;
-      break;
-    case STATIC_CYAN_CODE:
-      fromFadeColor = CYAN_COLOR;
-      toFadeColor = CYAN_COLOR;
-      break;
-    case STATIC_LIGHT_BLUE_CODE:
-      fromFadeColor = LIGHT_BLUE_COLOR;
-      toFadeColor = LIGHT_BLUE_COLOR;
-      break;
-    case STATIC_SKY_BLUE_CODE:
-      fromFadeColor = SKY_BLUE_COLOR;
-      toFadeColor = SKY_BLUE_COLOR;
-      break;
-    case STATIC_BLUE_CODE:
-      fromFadeColor = BLUE_COLOR;
-      toFadeColor = BLUE_COLOR;
-      break;
-    case STATIC_DARK_BLUE_CODE:
-      fromFadeColor = DARK_BLUE_COLOR;
-      toFadeColor = DARK_BLUE_COLOR;
-      break;
-    case STATIC_LYONS_BLUE_CODE:
-      fromFadeColor = LYONS_BLUE_COLOR;
-      toFadeColor = LYONS_BLUE_COLOR;
-      break;
-    case STATIC_PURPLE_CODE:
-      fromFadeColor = PURPLE_COLOR;
-      toFadeColor = PURPLE_COLOR;
-      break;
-    case STATIC_BROWN_CODE:
-      fromFadeColor = BROWN_COLOR;
-      toFadeColor = BROWN_COLOR;
-      break;
-    case STATIC_WHITE_CODE:
-      fromFadeColor = WHITE_COLOR;
-      toFadeColor = WHITE_COLOR;
-      break;
-    case STATIC_MILK_WHITE_CODE:
-      fromFadeColor = MILK_WHITE_COLOR;
-      toFadeColor = MILK_WHITE_COLOR;
-      break;
-    case STATIC_WHITE_PINK_CODE:
-      fromFadeColor = WHITE_PINK_COLOR;
-      toFadeColor = WHITE_PINK_COLOR;
-      break;
-    case STATIC_GREEN_WHITE_CODE:
-      fromFadeColor = GREEN_WHITE_COLOR;
-      toFadeColor = GREEN_WHITE_COLOR;
-      break;
-    case STATIC_BLUE_WHITE:
-      fromFadeColor = BLUE_WHITE_COLOR;
-      toFadeColor = BLUE_WHITE_COLOR;
-      break;
-    case DIY_KEY_1_CODE:
-      fromFadeColor = DIY_COLOR_1;
-      toFadeColor = DIY_COLOR_1;
-      break;
-    case DIY_KEY_2_CODE:
-      fromFadeColor = DIY_COLOR_2;
-      toFadeColor = DIY_COLOR_2;
-      break;
-    case DIY_KEY_3_CODE:
-      fromFadeColor = DIY_COLOR_3;
-      toFadeColor = DIY_COLOR_3;
-      break;
-    case DIY_KEY_4_CODE:
-      fromFadeColor = DIY_COLOR_4;
-      toFadeColor = DIY_COLOR_4;
-      break;
-    case DIY_KEY_5_CODE:
-      fromFadeColor = DIY_COLOR_5;
-      toFadeColor = DIY_COLOR_5;
-      break;
-    case DIY_KEY_6_CODE:
-      fromFadeColor = DIY_COLOR_6;
-      toFadeColor = DIY_COLOR_6;
-      break;
-    case FLASH_ON_AND_OFF_CODE:
-      switch (autoModeIndex) {
-        case 0:
-          fromFadeColor = BLACK_COLOR;
-          toFadeColor = BLACK_COLOR;
-          break;
-        case 1:
-          fromFadeColor = WHITE_COLOR;
-          toFadeColor = WHITE_COLOR;
-          break;
-      }
-      break;
-    case THREE_COLOR_JUMPY_CHANGE_CODE:
-    case SEVEN_COLOR_JUMPY_CHANGE_CODE:
-      switch (autoModeIndex) {
-        case 0:
-          fromFadeColor = RED_COLOR;
-          toFadeColor = RED_COLOR;
-          break;
-        case 1:
-          fromFadeColor = GREEN_COLOR;
-          toFadeColor = GREEN_COLOR;
-          break;
-        case 2:
-          fromFadeColor = BLUE_COLOR;
-          toFadeColor = BLUE_COLOR;
-          break;
-        case 3:
-          fromFadeColor = LIGHT_YELLOW_COLOR;
-          toFadeColor = LIGHT_YELLOW_COLOR;
-          break;
-        case 4:
-          fromFadeColor = BROWN_COLOR;
-          toFadeColor = BROWN_COLOR;
-          break;
-        case 5:
-          fromFadeColor = CYAN_COLOR;
-          toFadeColor = CYAN_COLOR;
-          break;
-        case 6:
-          fromFadeColor = WHITE_COLOR;
-          toFadeColor = WHITE_COLOR;
-          break;
-      }
-      break;
-    case THREE_COLOR_FADE_CHANGE_CODE:
-    case SEVEN_COLOR_FADE_CHANGE_CODE:
-      switch (autoModeIndex) {
-        case 0:
-          fromFadeColor = RED_COLOR;
-          toFadeColor = GREEN_COLOR;
-          break;
-        case 1:
-          fromFadeColor = GREEN_COLOR;
-          toFadeColor = BLUE_COLOR;
-          break;
-        case 2:
-          fromFadeColor = BLUE_COLOR;
-          toFadeColor = (currentMode == THREE_COLOR_FADE_CHANGE_CODE) ? RED_COLOR : LIGHT_YELLOW_COLOR;
-          break;
-        case 3:
-          fromFadeColor = LIGHT_YELLOW_COLOR;
-          toFadeColor = BROWN_COLOR;
-          break;
-        case 4:
-          fromFadeColor = BROWN_COLOR;
-          toFadeColor = CYAN_COLOR;
-          break;
-        case 5:
-          fromFadeColor = CYAN_COLOR;
-          toFadeColor = WHITE_COLOR;
-          break;
-        case 6:
-          fromFadeColor = WHITE_COLOR;
-          toFadeColor = RED_COLOR;
-          break;
-      }
-      break;
-    case AUTOMATIC_CHANGE_CODE:
-      switch (autoModeIndex) {
-        case 0:
-        case 3:
-          fromFadeColor = RED_COLOR;
-          toFadeColor = RED_COLOR;
-          break;
-        case 1:
-        case 4:
-          fromFadeColor = GREEN_COLOR;
-          toFadeColor = GREEN_COLOR;
-          break;
-        case 2:
-        case 5:
-          fromFadeColor = BLUE_COLOR;
-          toFadeColor = BLUE_COLOR;
-          break;
-        case 6:
-          fromFadeColor = LIGHT_YELLOW_COLOR;
-          toFadeColor = LIGHT_YELLOW_COLOR;
-          break;
-        case 7:
-          fromFadeColor = BROWN_COLOR;
-          toFadeColor = BROWN_COLOR;
-          break;
-        case 8:
-          fromFadeColor = CYAN_COLOR;
-          toFadeColor = CYAN_COLOR;
-          break;
-        case 9:
-          fromFadeColor = WHITE_COLOR;
-          toFadeColor = WHITE_COLOR;
-          break;
-        case 10:
-        case 17:
-          fromFadeColor = RED_COLOR;
-          toFadeColor = GREEN_COLOR;
-          break;
-        case 11:
-        case 18:
-          fromFadeColor = GREEN_COLOR;
-          toFadeColor = BLUE_COLOR;
-          break;
-        case 12:
-          fromFadeColor = BLUE_COLOR;
-          toFadeColor = LIGHT_YELLOW_COLOR;
-          break;
-        case 13:
-          fromFadeColor = LIGHT_YELLOW_COLOR;
-          toFadeColor = CYAN_COLOR;
-          break;
-        case 14:
-          fromFadeColor = CYAN_COLOR;
-          toFadeColor = BROWN_COLOR;
-          break;
-        case 15:
-          fromFadeColor = BROWN_COLOR;
-          toFadeColor = WHITE_COLOR;
-          break;
-        case 16:
-          fromFadeColor = WHITE_COLOR;
-          toFadeColor = RED_COLOR;
-          break;
-        case 19:
-          fromFadeColor = BLUE_COLOR;
-          toFadeColor = RED_COLOR;
-          break;
-        case 20:
-        case 22:
-          fromFadeColor = WHITE_COLOR;
-          toFadeColor = WHITE_COLOR;
-          break;
-        case 21:
-        case 23:
-          fromFadeColor = BLACK_COLOR;
-          toFadeColor = BLACK_COLOR;
-          break;
-      }
-      break;
-  }
-  currentColor.r = map(ledBrightness, 0, MAX_BRIGHTNESS, 0, map(currentTime - previousTime, 0, delayTime, isOn ? fromFadeColor.r : 0, isOn ? toFadeColor.r : 0));
-  currentColor.g = map(ledBrightness, 0, MAX_BRIGHTNESS, 0, map(currentTime - previousTime, 0, delayTime, isOn ? fromFadeColor.g : 0, isOn ? toFadeColor.g : 0));
-  currentColor.b = map(ledBrightness, 0, MAX_BRIGHTNESS, 0, map(currentTime - previousTime, 0, delayTime, isOn ? fromFadeColor.b : 0, isOn ? toFadeColor.b : 0));
-  for (int ledIndex = 0; ledIndex < NUM_OF_LEDS; ledIndex++) {
-    ledStrip[ledIndex] = currentColor;
-  }
-  FastLED.show();
 }
 
-CRGB adjustDiyColor(CRGB color, unsigned long buttonCode) {
-  switch (buttonCode) {
-    case INCREASE_RED_CODE:
-      color.r = min(color.r + 4, 255);
+/**
+ * Update the NeoPixels to the requested color, whether it was requested by HomeKit or the IR remote. This function uses 
+ * the RGB color space to change the LED values, and HomeKit uses the HSV color space, so the conversion between the color
+ * spaces are done here, as well.
+ */
+void neopixels_loop() {
+  if (updateLeds) {
+    uint32_t color = neopixels.Color(0, 0, 0);
+    /* Set what the color of the LEDs will be */
+    if (homekitOnOffCharacteristic.value.bool_value) {
+      hsv_t hsv = {
+        .hue = homekitHueCharacteristic.value.float_value,
+        .saturation = homekitSaturationCharacteristic.value.float_value,
+        .value = homekitBrightnessCharacteristic.value.int_value
+      };
+      rgb_t rgb = hsvToRgb(hsv);
+      color = neopixels.Color(rgb.red, rgb.green, rgb.blue);
+    }
+    /* Send the update to the LEDs to show the new color */
+    neopixels.clear();
+    neopixels.fill(color, 0, NEOPIXEL_COUNT);
+    neopixels.show();
+    /* Once finished, reset the flag to update the LEDs on the next input change */
+    updateLeds = false;
+  }
+}
+
+//------------------------------------------------------------------------------------------------------------------------
+
+/**
+ * If a custom color is currently being displayed, this function is used to allow the user to adjust any of the 
+ * RGB components of the color to their desire. Note that the color will only update if the brightness of the LEDs
+ * does not change
+ * 
+ * @param r_delta   The amount to change the red component of the custom color
+ * @param g_delta   The amount to change the green component of the custom color
+ * @param b_delta   The amount to change the blue component of the custom color
+ */
+void adjustDiyColor(float r_delta, float g_delta, float b_delta) {
+  /* Adjust the DIY color if it any of the DIY colors is currently displayed */
+  if (activeDiyColor != NULL) {
+    /* Save the current brightness */
+    activeDiyColor->value = homekitBrightnessCharacteristic.value.int_value;
+    /* Adjust the DIY color's RGB values */
+    rgb_t rgb = hsvToRgb(*activeDiyColor);
+    rgb.red = fmin(fmax(rgb.red + r_delta, 0.0f), 255.0f);
+    rgb.green = fmin(fmax(rgb.green + g_delta, 0.0f), 255.0f);
+    rgb.blue = fmin(fmax(rgb.blue + b_delta, 0.0f), 255.0f);
+    /* Set and save the new DIY color if the brightness did not change */
+    hsv_t hsv = rgbToHsv(rgb);
+    if (hsv.value == activeDiyColor->value) {
+      homekitHueCharacteristic.value.float_value = hsv.hue;
+      homekitSaturationCharacteristic.value.float_value = hsv.saturation;
+      *activeDiyColor = hsv;
+      updateLeds = true;
+    }
+  }
+}
+
+/**
+ * Set the brightness of the LEDs. This is called either when HomeKit receives a request to change the brightness
+ * or the user presses any of the brightness buttons on the IR remote.
+ * 
+ * @param brightness  The new brightness value of the LEDs
+ */
+void setBrightness(int brightness) {
+  homekitBrightnessCharacteristic.value.int_value = brightness;
+  updateLeds = true;
+}
+
+/**
+ * Set the color of the LEDs to one of the six available custom colors. This is called when the user presses any 
+ * of the DIY color buttons on the IR remote.
+ * 
+ * @param diyColor  Pointer to the custom color
+ */
+void setDiyColor(hsv_t* diyColor) {
+  homekitHueCharacteristic.value.float_value = diyColor->hue;
+  homekitSaturationCharacteristic.value.float_value = diyColor->saturation;
+  activeDiyColor = diyColor;
+  updateLeds = true;
+}
+
+/**
+ * Set the on/off state of the LEDs. This is called either when HomeKit receives a request to change the state
+ * or the user presses the power button on the IR remote.
+ * 
+ * @param state   The new on/off state of the LEDs
+ */
+void setOnOffState(bool state) {
+  homekitOnOffCharacteristic.value.bool_value = state;
+  updateLeds = true;
+}
+
+/**
+ * Set the color of the LEDs to a new color. This is called either when HomeKit changes the hue and/or saturation 
+ * values of the color or the user presses any of the static color buttons on the IR remote.
+ * 
+ * @param hue         The new hue value of the color
+ * @param saturation  The new saturation value of the color
+ */
+void setStaticColor(float hue, float saturation) {
+  homekitHueCharacteristic.value.float_value = hue;
+  homekitSaturationCharacteristic.value.float_value = saturation;
+  activeDiyColor = NULL;
+  updateLeds = true;
+}
+
+//------------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Callback function called by HomeKit to set the brightness of the LEDs.
+ * 
+ * @param value   The new brightness value of the LEDs.
+ */
+void setBrightness(const homekit_value_t value) {
+  setBrightness(value.int_value);
+}
+
+/**
+ * Callback function called by HomeKit to set the hue of the LEDs.
+ * 
+ * @param value   The new hue value of the LEDs.
+ */
+void setHue(const homekit_value_t value) {
+  setStaticColor(value.float_value, homekitSaturationCharacteristic.value.float_value);
+}
+
+/**
+ * Callback function called by HomeKit to turn the LEDs either on or off.
+ * 
+ * @param value   The new on/off state of the LEDs
+ */
+void setOnOffState(const homekit_value_t value) {
+  setOnOffState(value.bool_value);
+}
+
+/**
+ * Callback function called by HomeKit to set the saturation of the LEDs.
+ * 
+ * @param value   The new saturation value of the LEDs.
+ */
+void setSaturation(const homekit_value_t value) {
+  setStaticColor(homekitHueCharacteristic.value.float_value, value.float_value);
+}
+
+//------------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Convert a HSV color to a RGB color.
+ * 
+ * @param hsv HSV color
+ * @return    RGB color 
+ * 
+ * @link https://www.rapidtables.com/convert/color/hsv-to-rgb.html
+ */
+rgb_t hsvToRgb(hsv_t hsv) {
+  rgb_t rgb;
+  /* Convert range of HSV values from 0..100 to 0..1 (saturation and value) */
+  float h = hsv.hue;
+  float s = hsv.saturation / 100.0f;
+  float v = hsv.value / 100.0f;
+  /* Calculate helper variables for RGB values */
+  float c = v * s;
+  float x = c * (1.0f - fabs(fmod(h / 60.0f, 2.0f) - 1.0f));
+  float m = v - c;
+  /* Calculate RGB values */
+  switch ((int)floorf(h / 60.0f)) {
+    case 0:
+    case 6:
+      rgb.red = c;
+      rgb.green = x;
+      rgb.blue = 0.0f;
       break;
-    case DECREASE_RED_CODE:
-      color.r = max(color.r - 4, 0);
+    case 1:
+      rgb.red = x;
+      rgb.green = c;
+      rgb.blue = 0.0f;
       break;
-    case INCREASE_GREEN_CODE:
-      color.g = min(color.g + 4, 255);
+    case 2:
+      rgb.red = 0.0f;
+      rgb.green = c;
+      rgb.blue = x;
       break;
-    case DECREASE_GREEN_CODE:
-      color.g = max(color.g - 4, 0);
+    case 3:
+      rgb.red = 0.0f;
+      rgb.green = x;
+      rgb.blue = c;
       break;
-    case INCREASE_BLUE_CODE:
-      color.b = min(color.b + 4, 255);
+    case 4:
+      rgb.red = x;
+      rgb.green = 0.0f;
+      rgb.blue = c;
       break;
-    case DECREASE_BLUE_CODE:
-      color.b = max(color.b - 4, 0);
+    case 5:
+      rgb.red = c;
+      rgb.green = 0.0f;
+      rgb.blue = x;
       break;
   }
-  return color;
+  rgb.red = (rgb.red + m) * 255.0f;
+  rgb.green = (rgb.green + m) * 255.0f;
+  rgb.blue = (rgb.blue + m) * 255.0f;
+
+  return rgb;
+}
+
+/**
+ * Convert a RGB color to a HSV color.
+ * 
+ * @param rgb RGB color
+ * @return    HSV color
+ * 
+ * @link https://www.rapidtables.com/convert/color/rgb-to-hsv.html
+ */
+hsv_t rgbToHsv(rgb_t rgb) {
+  hsv_t hsv;
+  /* Change range of RGB values from 0..255 to 0..1 */
+  float r = rgb.red / 255.0f;
+  float g = rgb.green / 255.0f;
+  float b = rgb.blue / 255.0f;
+  /* Calculate min, max and delta brightnesses of RGB color components */
+  float c_max = fmax(r, fmax(g, b));
+  float c_min = fmin(r, fmin(g, b));
+  float d = c_max - c_min;
+  /* Calculate hue */
+  if (d == 0.0f) {
+    hsv.hue = 0.0f;
+  } else if (c_max == r) {
+    hsv.hue = 60.0f * fmod((g - b) / d, 6.0f);
+  } else if (c_max == g) {
+    hsv.hue = 60.0f * (((b - r) / d) + 2.0f);
+  } else if (c_max == b) {
+    hsv.hue = 60.0f * (((r - g) / d) + 4.0f);
+  }
+  /* Calculate saturation */
+  if (c_max == 0.0f) {
+    hsv.saturation = 0.0f;
+  } else {
+    hsv.saturation = (d / c_max) * 100.0f;
+  }
+  /* Calculate value */
+  hsv.value = c_max * 100.0f;
+
+  return hsv;
 }
