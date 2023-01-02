@@ -5,9 +5,10 @@
 #include <ESP8266WiFi.h>
 #include <IRrecv.h>
 #include <IRremoteESP8266.h>
+#include <Timer.h>
 
 #define EEPROM_STARTING_ADDRESS   1500
-#define INACTIVE_DIY_COLOR_INDEX  -1
+#define INACTIVE_INDEX            -1
 #define IR_RECEIVER_PIN           12
 #define NEOPIXEL_COUNT            65
 #define NEOPIXEL_PIN              14
@@ -21,11 +22,17 @@
 #define DIY_KEY_4_CODE            0xFF10EF
 #define DIY_KEY_5_CODE            0xFF906F
 #define DIY_KEY_6_CODE            0xFF50AF
+#define FLASH_ON_AND_OFF_CODE     0xFFD02F
 #define GREEN_DECREASE_CODE       0xFF8877
 #define GREEN_INCREASE_CODE       0xFFA857
+#define JUMP_SEVEN_CODE           0xFFA05F
+#define JUMP_THREE_CODE           0xFF20DF
 #define ON_OFF_CODE               0xFF02FD
+#define PAUSE_RUN_CODE            0xFF827D
 #define RED_DECREASE_CODE         0xFF08F7
 #define RED_INCREASE_CODE         0xFF28D7
+#define SPEED_DOWN_CODE           0xFFC837
+#define SPEED_UP_CODE             0xFFE817
 #define STATIC_BLUE_CODE          0xFFA25D
 #define STATIC_BLUE_WHITE         0xFFF807
 #define STATIC_BROWN_CODE         0xFF58A7
@@ -72,15 +79,35 @@ extern "C" homekit_characteristic_t homekitBrightnessCharacteristic;
 extern "C" homekit_characteristic_t homekitSaturationCharacteristic;
 extern "C" homekit_characteristic_t homekitHueCharacteristic;
 
+/* Define colors */
+const hsv_t BLACK = {.hue = 0.0f, .saturation = 0.0f, .value = 0.0f};
+const hsv_t BLUE = {.hue = 240.0f, .saturation = 100.0f, .value = 1.0f};
+const hsv_t BROWN = {.hue = 300.0f, .saturation = 100.0f, .value = 1.0f};
+const hsv_t CYAN = {.hue = 165.0f, .saturation = 100.0f, .value = 1.0f};
+const hsv_t GREEN = {.hue = 120.0f, .saturation = 100.0f, .value = 1.0f};
+const hsv_t LIGHT_YELLOW = {.hue = 60.0f, .saturation = 100.0f, .value = 1.0f};
+const hsv_t RED = {.hue = 0.0f, .saturation = 100.0f, .value = 1.0f};
+const hsv_t WHITE = {.hue = 0.0f, .saturation = 0.0f, .value = 1.0f};
+
+/* Define animation color sequences */
+const hsv_t FLASH_ON_OFF_COLORS[2] = {BLACK, WHITE};
+const hsv_t JUMP_SEVEN_COLORS[7] = {RED, GREEN, BLUE, LIGHT_YELLOW, BROWN, CYAN, WHITE};
+const hsv_t JUMP_THREE_COLORS[3] = {RED, GREEN, BLUE};
+
 /* Other variables */
-int activeDiyColorIndex = INACTIVE_DIY_COLOR_INDEX;
+int activeDiyColorIndex = INACTIVE_INDEX;
+int activeAnimationIndex = INACTIVE_INDEX;
+const hsv_t* animationColors;
 hsv_t diyColors[6];
 decode_results irDecoder;
+int numberOfAnimationColors;
+uint32_t timeIntervalMs = 500;
+Timer timer(MILLIS);
 bool updateLeds = false;
 
 void setup() {
   /* Start the serial monitor */
-  // Serial.begin(115200);
+  Serial.begin(115200);
   /* Start the EEPROM service */
   EEPROM.begin(EEPROM_STARTING_ADDRESS + sizeof(diyColors));
   EEPROM.get(EEPROM_STARTING_ADDRESS, diyColors);
@@ -167,17 +194,35 @@ void ir_receiver_loop() {
           case DIY_KEY_6_CODE:
             setDiyColor(5);
             break;
+          case FLASH_ON_AND_OFF_CODE:
+            setAnimation(FLASH_ON_OFF_COLORS, sizeof(FLASH_ON_OFF_COLORS));
+            break;
           case GREEN_DECREASE_CODE:
             adjustDiyColor(0.0f, -4.0f, 0.0f);
             break;
           case GREEN_INCREASE_CODE:
             adjustDiyColor(0.0f, 4.0f, 0.0f);
             break;
+          case JUMP_SEVEN_CODE:
+            setAnimation(JUMP_SEVEN_COLORS, sizeof(JUMP_SEVEN_COLORS));
+            break;
+          case JUMP_THREE_CODE:
+            setAnimation(JUMP_THREE_COLORS, sizeof(JUMP_THREE_COLORS));
+            break;
+          case PAUSE_RUN_CODE:
+            setTimerState();
+            break;
           case RED_DECREASE_CODE:
             adjustDiyColor(-4.0f, 0.0f, 0.0f);
             break;
           case RED_INCREASE_CODE:
             adjustDiyColor(4.0f, 0.0f, 0.0f);
+            break;
+          case SPEED_DOWN_CODE:
+            setInterval(min(timeIntervalMs + 10, (uint32_t)3000));
+            break;
+          case SPEED_UP_CODE:
+            setInterval(max(timeIntervalMs - 10, (uint32_t)50));
             break;
           case STATIC_BLUE_CODE:
             setStaticColor(240.0f, 100.0f);
@@ -253,15 +298,31 @@ void ir_receiver_loop() {
  * spaces are done here, as well.
  */
 void neopixels_loop() {
+  if (activeAnimationIndex != INACTIVE_INDEX) {
+    if (timer.read() >= timeIntervalMs) {
+      activeAnimationIndex = (activeAnimationIndex + 1) % numberOfAnimationColors;
+      timer.start();
+      updateLeds = true;
+    }
+  }
   if (updateLeds) {
     uint32_t color = neopixels.Color(0, 0, 0);
     /* Set what the color of the LEDs will be */
     if (homekitOnOffCharacteristic.value.bool_value) {
-      hsv_t hsv = {
-        .hue = homekitHueCharacteristic.value.float_value,
-        .saturation = homekitSaturationCharacteristic.value.float_value,
-        .value = homekitBrightnessCharacteristic.value.int_value
-      };
+      hsv_t hsv;
+      if (activeAnimationIndex != INACTIVE_INDEX) {
+        hsv = {
+          .hue = animationColors[activeAnimationIndex].hue,
+          .saturation = animationColors[activeAnimationIndex].saturation,
+          .value = animationColors[activeAnimationIndex].value * homekitBrightnessCharacteristic.value.int_value
+        };
+      } else {
+        hsv = {
+          .hue = homekitHueCharacteristic.value.float_value,
+          .saturation = homekitSaturationCharacteristic.value.float_value,
+          .value = homekitBrightnessCharacteristic.value.int_value
+        };
+      }
       rgb_t rgb = hsvToRgb(hsv);
       color = neopixels.Color(rgb.red, rgb.green, rgb.blue);
     }
@@ -287,7 +348,7 @@ void neopixels_loop() {
  */
 void adjustDiyColor(float r_delta, float g_delta, float b_delta) {
   /* Adjust the DIY color if it any of the DIY colors is currently displayed */
-  if (activeDiyColorIndex != INACTIVE_DIY_COLOR_INDEX) {
+  if (activeDiyColorIndex != INACTIVE_INDEX) {
     /* Save the current brightness */
     diyColors[activeDiyColorIndex].value = homekitBrightnessCharacteristic.value.int_value;
     /* Adjust the DIY color's RGB values */
@@ -303,6 +364,22 @@ void adjustDiyColor(float r_delta, float g_delta, float b_delta) {
       writeDiyColorsToEeprom();
     }
   }
+}
+
+/**
+ * Setup global variables to begin sequencing through an array of colors. This is called when the user presses any
+ * of the animation buttons on the IR remote (AUTO, FADE7, FLASH, JUMP3, etc.)
+ * 
+ * @param colors  Pointer to the list of colors to display
+ * @param size    The size of 'colors' in bytes, not in number of colors
+ */
+void setAnimation(const hsv_t* colors, size_t size) {
+  animationColors = colors;
+  numberOfAnimationColors = size / sizeof(hsv_t);
+  activeAnimationIndex = 0;
+  timer.start();
+  activeDiyColorIndex = INACTIVE_INDEX;
+  updateLeds = true;
 }
 
 /**
@@ -325,8 +402,22 @@ void setBrightness(int brightness) {
 void setDiyColor(int index) {
   homekitHueCharacteristic.value.float_value = diyColors[index].hue;
   homekitSaturationCharacteristic.value.float_value = diyColors[index].saturation;
+  activeAnimationIndex = INACTIVE_INDEX;
   activeDiyColorIndex = index;
+  timer.stop();
   updateLeds = true;
+}
+
+/**
+ * Set the amount of time between each animation color is displayed. This is called when the user presses either 
+ * of the animation speed buttons on the IR remote (QUICK and SLOW).
+ * 
+ * @param interval  The new interval time
+ */
+void setInterval(uint32_t interval) {
+  if (activeAnimationIndex != INACTIVE_INDEX) {
+    timeIntervalMs = interval;
+  }
 }
 
 /**
@@ -337,6 +428,10 @@ void setDiyColor(int index) {
  */
 void setOnOffState(bool state) {
   homekitOnOffCharacteristic.value.bool_value = state;
+  if (activeAnimationIndex != INACTIVE_INDEX) {
+    activeAnimationIndex = 0;
+    timer.start();
+  }
   updateLeds = true;
 }
 
@@ -350,8 +445,27 @@ void setOnOffState(bool state) {
 void setStaticColor(float hue, float saturation) {
   homekitHueCharacteristic.value.float_value = hue;
   homekitSaturationCharacteristic.value.float_value = saturation;
-  activeDiyColorIndex = INACTIVE_DIY_COLOR_INDEX;
+  activeAnimationIndex = INACTIVE_INDEX;
+  activeDiyColorIndex = INACTIVE_INDEX;
+  timer.stop();
   updateLeds = true;
+}
+
+/**
+ * Change the state of the animation timer. This is called when the user presses the PAUSE/RUN button on the IR 
+ * remote to pause/continue the current animation running.
+ */
+void setTimerState() {
+  if (activeAnimationIndex != INACTIVE_INDEX) {
+    switch (timer.state()) {
+      case RUNNING:
+        timer.pause();
+        break;
+      case PAUSED:
+        timer.resume();
+        break;
+    }
+  }
 }
 
 //------------------------------------------------------------------------------------------------------------------------

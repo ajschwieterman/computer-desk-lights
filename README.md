@@ -1,4 +1,4 @@
-# computer-desk
+# computer-desk-lights
 Arduino code to control an LED strip that is built into a computer desk via an IR remote and HomeKit.
 
 ![Main](https://github.com/ajschwieterman/computer-desk/blob/main/main.jpg)
@@ -20,3 +20,4 @@ Below is the circuit diagram for the IR receiver sensor and NeoPixels.
 - [Adafruit NeoPixel](https://github.com/adafruit/Adafruit_NeoPixel) v1.10.7
 - [HomeKit-ESP8266](https://github.com/Mixiaoxiao/Arduino-HomeKit-ESP8266) v1.2.0
 - [IRremoteESP8266](https://github.com/crankyoldgit/IRremoteESP8266) v2.8.4
+- [Timer](https://github.com/sstaub/Timer) v1.2.1
