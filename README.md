@@ -16,6 +16,14 @@ Below is the wiring that I used to supply 5V of power to the NeoPixels and contr
 Below is the circuit diagram for the IR receiver sensor and NeoPixels.
 ![Main](https://github.com/ajschwieterman/computer-desk-lights/blob/main/schematic.png)
 
+# Required board libraries
+- [esp8266](https://github.com/esp8266/Arduino) v3.0.2
+  - Adafruit Feather HUZZAH ESP8266
+
+Use the following instructions to install the Adafruit board libraries and configure the ESP8266 hardware.
+- [Board Libraries Installation](https://learn.adafruit.com/adafruit-feather-huzzah-esp8266/using-arduino-ide)
+- [Hardware Configuration](https://github.com/Mixiaoxiao/Arduino-HomeKit-ESP8266#recommended-settings-in-ide)
+
 # Required Arduino libraries
 - [Adafruit NeoPixel](https://github.com/adafruit/Adafruit_NeoPixel) v1.10.7
 - [HomeKit-ESP8266](https://github.com/Mixiaoxiao/Arduino-HomeKit-ESP8266) v1.2.0
