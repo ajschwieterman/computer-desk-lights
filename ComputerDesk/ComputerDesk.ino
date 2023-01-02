@@ -12,6 +12,7 @@
 #define IR_RECEIVER_PIN           12
 #define NEOPIXEL_COUNT            65
 #define NEOPIXEL_PIN              14
+#define AUTOMATIC_CHANGE_CODE     0xFFF00F
 #define BLUE_DECREASE_CODE        0xFF48B7
 #define BLUE_INCREASE_CODE        0xFF6897
 #define BRIGHTNESS_DECREASE_CODE  0xFFBA45
@@ -22,6 +23,8 @@
 #define DIY_KEY_4_CODE            0xFF10EF
 #define DIY_KEY_5_CODE            0xFF906F
 #define DIY_KEY_6_CODE            0xFF50AF
+#define FADE_SEVEN_CODE           0xFFE01F
+#define FADE_THREE_CODE           0xFF609F
 #define FLASH_ON_AND_OFF_CODE     0xFFD02F
 #define GREEN_DECREASE_CODE       0xFF8877
 #define GREEN_INCREASE_CODE       0xFFA857
@@ -68,6 +71,12 @@ typedef struct {
   float blue;
 } rgb_t;
 
+/* Define structure for color transitions */
+typedef struct {
+  hsv_t color;
+  bool fade;
+} transistion_t;
+
 /* Define hardware */
 IRrecv irReceiver(IR_RECEIVER_PIN);
 Adafruit_NeoPixel neopixels(NEOPIXEL_COUNT, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800);
@@ -103,14 +112,70 @@ const hsv_t WHITE_PINK = {.hue = 300.0f, .saturation = 12.5f, .value = 100.0f};
 const hsv_t YELLOW = {.hue = 45.0f, .saturation = 100.0f, .value = 100.0f};
 
 /* Define animation color sequences */
-const hsv_t FLASH_ON_OFF_COLORS[2] = {BLACK, WHITE};
-const hsv_t JUMP_SEVEN_COLORS[7] = {RED, GREEN, BLUE, LIGHT_YELLOW, BROWN, CYAN, WHITE};
-const hsv_t JUMP_THREE_COLORS[3] = {RED, GREEN, BLUE};
+const transistion_t AUTO_COLORS[25] = {
+  {.color = RED, .fade = false},
+  {.color = GREEN, .fade = false},
+  {.color = BLUE, .fade = false},
+  {.color = RED, .fade = false},
+  {.color = GREEN, .fade = false},
+  {.color = BLUE, .fade = false},
+  {.color = LIGHT_YELLOW, .fade = false},
+  {.color = BROWN, .fade = false},
+  {.color = CYAN, .fade = false},
+  {.color = WHITE, .fade = false},
+  {.color = RED, .fade = true},
+  {.color = GREEN, .fade = true},
+  {.color = BLUE, .fade = true},
+  {.color = LIGHT_YELLOW, .fade = true},
+  {.color = BROWN, .fade = true},
+  {.color = CYAN, .fade = true},
+  {.color = WHITE, .fade = true},
+  {.color = RED, .fade = true},
+  {.color = GREEN, .fade = true},
+  {.color = BLUE, .fade = true},
+  {.color = RED, .fade = true},
+  {.color = WHITE, .fade = false},
+  {.color = BLACK, .fade = false},
+  {.color = WHITE, .fade = false},
+  {.color = BLACK, .fade = false},
+};
+const transistion_t FADE_SEVEN_COLORS[7] = {
+  {.color = RED, .fade = true},
+  {.color = GREEN, .fade = true},
+  {.color = BLUE, .fade = true},
+  {.color = LIGHT_YELLOW, .fade = true},
+  {.color = BROWN, .fade = true},
+  {.color = CYAN, .fade = true},
+  {.color = WHITE, .fade = true},
+};
+const transistion_t FADE_THREE_COLORS[3] = {
+  {.color = RED, .fade = true},
+  {.color = GREEN, .fade = true},
+  {.color = BLUE, .fade = true},
+};
+const transistion_t FLASH_ON_OFF_COLORS[2] = {
+  {.color = BLACK, .fade = false},
+  {.color = WHITE, .fade = false},
+};
+const transistion_t JUMP_SEVEN_COLORS[7] = {
+  {.color = RED, .fade = false},
+  {.color = GREEN, .fade = false},
+  {.color = BLUE, .fade = false},
+  {.color = LIGHT_YELLOW, .fade = false},
+  {.color = BROWN, .fade = false},
+  {.color = CYAN, .fade = false},
+  {.color = WHITE, .fade = false},
+};
+const transistion_t JUMP_THREE_COLORS[3] = {
+  {.color = RED, .fade = false},
+  {.color = GREEN, .fade = false},
+  {.color = BLUE, .fade = false},
+};
 
 /* Other variables */
 int activeDiyColorIndex = INACTIVE_INDEX;
 int activeAnimationIndex = INACTIVE_INDEX;
-const hsv_t* animationColors;
+const transistion_t* animation;
 hsv_t diyColors[6];
 decode_results irDecoder;
 int numberOfAnimationColors;
@@ -177,6 +242,9 @@ void ir_receiver_loop() {
       /* Change the LEDs color if they are on */
       if (homekitOnOffCharacteristic.value.bool_value) {
         switch(irDecoder.value) {
+          case AUTOMATIC_CHANGE_CODE:
+            setAnimation(AUTO_COLORS, sizeof(AUTO_COLORS));
+            break;
           case BLUE_DECREASE_CODE:
             adjustDiyColor(0.0f, 0.0f, -4.0f);
             break;
@@ -206,6 +274,12 @@ void ir_receiver_loop() {
             break;
           case DIY_KEY_6_CODE:
             setDiyColor(5);
+            break;
+          case FADE_SEVEN_CODE:
+            setAnimation(FADE_SEVEN_COLORS, sizeof(FADE_SEVEN_COLORS));
+            break;
+          case FADE_THREE_CODE:
+            setAnimation(FADE_THREE_COLORS, sizeof(FADE_THREE_COLORS));
             break;
           case FLASH_ON_AND_OFF_CODE:
             setAnimation(FLASH_ON_OFF_COLORS, sizeof(FLASH_ON_OFF_COLORS));
@@ -311,10 +385,15 @@ void ir_receiver_loop() {
  * spaces are done here, as well.
  */
 void neopixels_loop() {
-  if (activeAnimationIndex != INACTIVE_INDEX) {
+  if (isRunningAnimation()) {
+    /* Transition to the next color in the animation if the timer expired */
     if (timer.read() >= timeIntervalMs) {
       activeAnimationIndex = (activeAnimationIndex + 1) % numberOfAnimationColors;
       timer.start();
+      updateLeds = true;
+    }
+    /* Always update the LEDs if in a fading transiting */
+    if (animation[activeAnimationIndex].fade) {
       updateLeds = true;
     }
   }
@@ -322,21 +401,38 @@ void neopixels_loop() {
     uint32_t color = neopixels.Color(0, 0, 0);
     /* Set what the color of the LEDs will be */
     if (homekitOnOffCharacteristic.value.bool_value) {
-      hsv_t hsv;
-      if (activeAnimationIndex != INACTIVE_INDEX) {
-        hsv = {
-          .hue = animationColors[activeAnimationIndex].hue,
-          .saturation = animationColors[activeAnimationIndex].saturation,
-          .value = (animationColors[activeAnimationIndex].value / 100.0f) * homekitBrightnessCharacteristic.value.int_value
-        };
+      rgb_t rgb;
+      if (isRunningAnimation()) {
+        if (animation[activeAnimationIndex].fade) {
+          /* Get the colors to fade from and to */
+          hsv_t oldColorHsv = animation[activeAnimationIndex].color;
+          hsv_t newColorHsv = animation[(activeAnimationIndex + 1) % numberOfAnimationColors].color;
+          /* Adjust the colors to match the current brightness level */
+          oldColorHsv.value = (oldColorHsv.value / 100.0f) * homekitBrightnessCharacteristic.value.int_value;
+          newColorHsv.value = (newColorHsv.value / 100.0f) * homekitBrightnessCharacteristic.value.int_value;
+          /* Perform the fading calculation and create color to display */
+          rgb_t oldColorRgb = hsvToRgb(oldColorHsv);
+          rgb_t newColorRgb = hsvToRgb(newColorHsv);
+          float r = map(timer.read(), 0, timeIntervalMs, oldColorRgb.red, newColorRgb.red);
+          float g = map(timer.read(), 0, timeIntervalMs, oldColorRgb.green, newColorRgb.green);
+          float b = map(timer.read(), 0, timeIntervalMs, oldColorRgb.blue, newColorRgb.blue);
+          rgb = {.red = r, .green = g, .blue = b};
+        } else {
+          /* Create static color of animation to display */
+          rgb = hsvToRgb({
+            .hue = animation[activeAnimationIndex].color.hue,
+            .saturation = animation[activeAnimationIndex].color.saturation,
+            .value = (animation[activeAnimationIndex].color.value / 100.0f) * homekitBrightnessCharacteristic.value.int_value
+          });
+        }
       } else {
-        hsv = {
+        /* Create static color to display */
+        rgb = hsvToRgb({
           .hue = homekitHueCharacteristic.value.float_value,
           .saturation = homekitSaturationCharacteristic.value.float_value,
           .value = homekitBrightnessCharacteristic.value.int_value
-        };
+        });
       }
-      rgb_t rgb = hsvToRgb(hsv);
       color = neopixels.Color(rgb.red, rgb.green, rgb.blue);
     }
     /* Send the update to the LEDs to show the new color */
@@ -383,12 +479,12 @@ void adjustDiyColor(float r_delta, float g_delta, float b_delta) {
  * Setup global variables to begin sequencing through an array of colors. This is called when the user presses any
  * of the animation buttons on the IR remote (AUTO, FADE7, FLASH, JUMP3, etc.)
  * 
- * @param colors  Pointer to the list of colors to display
- * @param size    The size of 'colors' in bytes, not in number of colors
+ * @param a       Pointer to the list of transitions to display
+ * @param size    The size of 'animation' in bytes, not in number of transitions
  */
-void setAnimation(const hsv_t* colors, size_t size) {
-  animationColors = colors;
-  numberOfAnimationColors = size / sizeof(hsv_t);
+void setAnimation(const transistion_t* a, size_t size) {
+  animation = a;
+  numberOfAnimationColors = size / sizeof(transistion_t);
   activeAnimationIndex = 0;
   timer.start();
   activeDiyColorIndex = INACTIVE_INDEX;
@@ -428,7 +524,7 @@ void setDiyColor(int index) {
  * @param interval  The new interval time
  */
 void setInterval(uint32_t interval) {
-  if (activeAnimationIndex != INACTIVE_INDEX) {
+  if (isRunningAnimation()) {
     timeIntervalMs = interval;
   }
 }
@@ -441,7 +537,7 @@ void setInterval(uint32_t interval) {
  */
 void setOnOffState(bool state) {
   homekitOnOffCharacteristic.value.bool_value = state;
-  if (activeAnimationIndex != INACTIVE_INDEX) {
+  if (isRunningAnimation()) {
     activeAnimationIndex = 0;
     timer.start();
   }
@@ -469,7 +565,7 @@ void setStaticColor(float hue, float saturation) {
  * remote to pause/continue the current animation running.
  */
 void setTimerState() {
-  if (activeAnimationIndex != INACTIVE_INDEX) {
+  if (isRunningAnimation()) {
     switch (timer.state()) {
       case RUNNING:
         timer.pause();
@@ -621,6 +717,15 @@ hsv_t rgbToHsv(rgb_t rgb) {
   hsv.value = c_max * 100.0f;
 
   return hsv;
+}
+
+/**
+ * Check if an animation is currently running.
+ * 
+ * @return True if an animation is running; False otherwise
+ */
+bool isRunningAnimation() {
+  return (activeAnimationIndex != INACTIVE_INDEX);
 }
 
 /**
