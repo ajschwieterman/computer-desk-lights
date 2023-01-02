@@ -1,10 +1,13 @@
 #include <Adafruit_NeoPixel.h>
 #include <Arduino.h>
 #include <arduino_homekit_server.h>
+#include <EEPROM.h>
 #include <ESP8266WiFi.h>
 #include <IRrecv.h>
 #include <IRremoteESP8266.h>
 
+#define EEPROM_STARTING_ADDRESS   1500
+#define INACTIVE_DIY_COLOR_INDEX  -1
 #define IR_RECEIVER_PIN           12
 #define NEOPIXEL_COUNT            65
 #define NEOPIXEL_PIN              14
@@ -70,19 +73,18 @@ extern "C" homekit_characteristic_t homekitSaturationCharacteristic;
 extern "C" homekit_characteristic_t homekitHueCharacteristic;
 
 /* Other variables */
-hsv_t* activeDiyColor;
-hsv_t diyColor1 = {0.0f, 0.0f, 0.0f};
-hsv_t diyColor2 = {0.0f, 0.0f, 0.0f};
-hsv_t diyColor3 = {0.0f, 0.0f, 0.0f};
-hsv_t diyColor4 = {0.0f, 0.0f, 0.0f};
-hsv_t diyColor5 = {0.0f, 0.0f, 0.0f};
-hsv_t diyColor6 = {0.0f, 0.0f, 0.0f};
+int activeDiyColorIndex = INACTIVE_DIY_COLOR_INDEX;
+hsv_t diyColors[6];
 decode_results irDecoder;
 bool updateLeds = false;
 
 void setup() {
   /* Start the serial monitor */
   // Serial.begin(115200);
+  /* Start the EEPROM service */
+  EEPROM.begin(EEPROM_STARTING_ADDRESS + sizeof(diyColors));
+  EEPROM.get(EEPROM_STARTING_ADDRESS, diyColors);
+  // resetDiyColors();
   /* Start the IR Receiver service */
   irReceiver.enableIRIn();
   /* Start the NeoPixel service */
@@ -148,22 +150,22 @@ void ir_receiver_loop() {
             setBrightness(min(homekitBrightnessCharacteristic.value.int_value + 10, 100));
             break;
           case DIY_KEY_1_CODE:
-            setDiyColor(&diyColor1);
+            setDiyColor(0);
             break;
           case DIY_KEY_2_CODE:
-            setDiyColor(&diyColor2);
+            setDiyColor(1);
             break;
           case DIY_KEY_3_CODE:
-            setDiyColor(&diyColor3);
+            setDiyColor(2);
             break;
           case DIY_KEY_4_CODE:
-            setDiyColor(&diyColor4);
+            setDiyColor(3);
             break;
           case DIY_KEY_5_CODE:
-            setDiyColor(&diyColor5);
+            setDiyColor(4);
             break;
           case DIY_KEY_6_CODE:
-            setDiyColor(&diyColor6);
+            setDiyColor(5);
             break;
           case GREEN_DECREASE_CODE:
             adjustDiyColor(0.0f, -4.0f, 0.0f);
@@ -285,21 +287,20 @@ void neopixels_loop() {
  */
 void adjustDiyColor(float r_delta, float g_delta, float b_delta) {
   /* Adjust the DIY color if it any of the DIY colors is currently displayed */
-  if (activeDiyColor != NULL) {
+  if (activeDiyColorIndex != INACTIVE_DIY_COLOR_INDEX) {
     /* Save the current brightness */
-    activeDiyColor->value = homekitBrightnessCharacteristic.value.int_value;
+    diyColors[activeDiyColorIndex].value = homekitBrightnessCharacteristic.value.int_value;
     /* Adjust the DIY color's RGB values */
-    rgb_t rgb = hsvToRgb(*activeDiyColor);
+    rgb_t rgb = hsvToRgb(diyColors[activeDiyColorIndex]);
     rgb.red = fmin(fmax(rgb.red + r_delta, 0.0f), 255.0f);
     rgb.green = fmin(fmax(rgb.green + g_delta, 0.0f), 255.0f);
     rgb.blue = fmin(fmax(rgb.blue + b_delta, 0.0f), 255.0f);
     /* Set and save the new DIY color if the brightness did not change */
     hsv_t hsv = rgbToHsv(rgb);
-    if (hsv.value == activeDiyColor->value) {
-      homekitHueCharacteristic.value.float_value = hsv.hue;
-      homekitSaturationCharacteristic.value.float_value = hsv.saturation;
-      *activeDiyColor = hsv;
-      updateLeds = true;
+    if (hsv.value == diyColors[activeDiyColorIndex].value) {
+      diyColors[activeDiyColorIndex] = hsv;
+      setDiyColor(activeDiyColorIndex);
+      writeDiyColorsToEeprom();
     }
   }
 }
@@ -319,12 +320,12 @@ void setBrightness(int brightness) {
  * Set the color of the LEDs to one of the six available custom colors. This is called when the user presses any 
  * of the DIY color buttons on the IR remote.
  * 
- * @param diyColor  Pointer to the custom color
+ * @param index   The index of the custom color
  */
-void setDiyColor(hsv_t* diyColor) {
-  homekitHueCharacteristic.value.float_value = diyColor->hue;
-  homekitSaturationCharacteristic.value.float_value = diyColor->saturation;
-  activeDiyColor = diyColor;
+void setDiyColor(int index) {
+  homekitHueCharacteristic.value.float_value = diyColors[index].hue;
+  homekitSaturationCharacteristic.value.float_value = diyColors[index].saturation;
+  activeDiyColorIndex = index;
   updateLeds = true;
 }
 
@@ -349,7 +350,7 @@ void setOnOffState(bool state) {
 void setStaticColor(float hue, float saturation) {
   homekitHueCharacteristic.value.float_value = hue;
   homekitSaturationCharacteristic.value.float_value = saturation;
-  activeDiyColor = NULL;
+  activeDiyColorIndex = INACTIVE_DIY_COLOR_INDEX;
   updateLeds = true;
 }
 
@@ -480,6 +481,9 @@ hsv_t rgbToHsv(rgb_t rgb) {
   } else if (c_max == b) {
     hsv.hue = 60.0f * (((r - g) / d) + 4.0f);
   }
+  if (hsv.hue < 0.0f) {
+    hsv.hue += 360.0f;
+  }
   /* Calculate saturation */
   if (c_max == 0.0f) {
     hsv.saturation = 0.0f;
@@ -490,4 +494,23 @@ hsv_t rgbToHsv(rgb_t rgb) {
   hsv.value = c_max * 100.0f;
 
   return hsv;
+}
+
+/**
+ * Reset the custom colors.
+ */
+void resetDiyColors() {
+  const hsv_t resetColor = {.hue = 0.0f, .saturation = 0.0f, .value = 0.0f};
+  for (int index = 0; index < (sizeof(diyColors) / sizeof(hsv_t)); index++) {
+    diyColors[index] = resetColor;
+  }
+  writeDiyColorsToEeprom();
+}
+
+/**
+ * Write the custom colors to EEPROM.
+ */
+void writeDiyColorsToEeprom() {
+  EEPROM.put(EEPROM_STARTING_ADDRESS, diyColors);
+  EEPROM.commit();
 }
