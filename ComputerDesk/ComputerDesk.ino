@@ -81,13 +81,26 @@ extern "C" homekit_characteristic_t homekitHueCharacteristic;
 
 /* Define colors */
 const hsv_t BLACK = {.hue = 0.0f, .saturation = 0.0f, .value = 0.0f};
-const hsv_t BLUE = {.hue = 240.0f, .saturation = 100.0f, .value = 1.0f};
-const hsv_t BROWN = {.hue = 300.0f, .saturation = 100.0f, .value = 1.0f};
-const hsv_t CYAN = {.hue = 165.0f, .saturation = 100.0f, .value = 1.0f};
-const hsv_t GREEN = {.hue = 120.0f, .saturation = 100.0f, .value = 1.0f};
-const hsv_t LIGHT_YELLOW = {.hue = 60.0f, .saturation = 100.0f, .value = 1.0f};
-const hsv_t RED = {.hue = 0.0f, .saturation = 100.0f, .value = 1.0f};
-const hsv_t WHITE = {.hue = 0.0f, .saturation = 0.0f, .value = 1.0f};
+const hsv_t BLUE = {.hue = 240.0f, .saturation = 100.0f, .value = 100.0f};
+const hsv_t BLUE_WHITE = {.hue = 300.0f, .saturation = 50.0f, .value = 100.0f};
+const hsv_t BROWN = {.hue = 300.0f, .saturation = 100.0f, .value = 100.0f};
+const hsv_t CYAN = {.hue = 165.0f, .saturation = 100.0f, .value = 100.0f};
+const hsv_t DARK_BLUE = {.hue = 255.0f, .saturation = 100.0f, .value = 100.0f};
+const hsv_t DARK_YELLOW = {.hue = 30.0f, .saturation = 100.0f, .value = 100.0f};
+const hsv_t GREEN = {.hue = 120.0f, .saturation = 100.0f, .value = 100.0f};
+const hsv_t GREEN_WHITE = {.hue = 180.0f, .saturation = 12.5f, .value = 100.0f};
+const hsv_t LIGHT_BLUE = {.hue = 195.0f, .saturation = 100.0f, .value = 100.0f};
+const hsv_t LIGHT_GREEN = {.hue = 150.0f, .saturation = 100.0f, .value = 100.0f};
+const hsv_t LIGHT_YELLOW = {.hue = 60.0f, .saturation = 100.0f, .value = 100.0f};
+const hsv_t LYONS_BLUE = {.hue = 270.0f, .saturation = 100.0f, .value = 100.0f};
+const hsv_t MILK_WHITE = {.hue = 300.0f, .saturation = 50.0f, .value = 100.0f};
+const hsv_t ORANGE = {.hue = 15.0f, .saturation = 100.0f, .value = 100.0f};
+const hsv_t PURPLE = {.hue = 285.0f, .saturation = 100.0f, .value = 100.0f};
+const hsv_t RED = {.hue = 0.0f, .saturation = 100.0f, .value = 100.0f};
+const hsv_t SKY_BLUE = {.hue = 210.0f, .saturation = 100.0f, .value = 100.0f};
+const hsv_t WHITE = {.hue = 0.0f, .saturation = 0.0f, .value = 100.0f};
+const hsv_t WHITE_PINK = {.hue = 300.0f, .saturation = 12.5f, .value = 100.0f};
+const hsv_t YELLOW = {.hue = 45.0f, .saturation = 100.0f, .value = 100.0f};
 
 /* Define animation color sequences */
 const hsv_t FLASH_ON_OFF_COLORS[2] = {BLACK, WHITE};
@@ -225,64 +238,64 @@ void ir_receiver_loop() {
             setInterval(max(timeIntervalMs - 10, (uint32_t)50));
             break;
           case STATIC_BLUE_CODE:
-            setStaticColor(240.0f, 100.0f);
+            setStaticColor(BLUE.hue, BLUE.saturation);
             break;
           case STATIC_BLUE_WHITE:
-            setStaticColor(300.0f, 50.0f);
+            setStaticColor(BLUE_WHITE.hue, BLUE_WHITE.saturation);
             break;
           case STATIC_BROWN_CODE:
-            setStaticColor(300.0f, 100.0f);
+            setStaticColor(BROWN.hue, BROWN.saturation);
             break;
           case STATIC_CYAN_CODE:
-            setStaticColor(165.0f, 100.0f);
+            setStaticColor(CYAN.hue, CYAN.saturation);
             break;
           case STATIC_DARK_BLUE_CODE:
-            setStaticColor(255.0f, 100.0f);
+            setStaticColor(DARK_BLUE.hue, DARK_BLUE.saturation);
             break;
           case STATIC_DARK_YELLOW_CODE:
-            setStaticColor(30.0f, 100.0f);
+            setStaticColor(DARK_YELLOW.hue, DARK_YELLOW.saturation);
             break;
           case STATIC_GREEN_CODE:
-            setStaticColor(120.0f, 100.0f);
+            setStaticColor(GREEN.hue, GREEN.saturation);
             break;
           case STATIC_GREEN_WHITE_CODE:
-            setStaticColor(180.0f, 12.5f);
+            setStaticColor(GREEN_WHITE.hue, GREEN_WHITE.saturation);
             break;
           case STATIC_LIGHT_BLUE_CODE:
-            setStaticColor(195.0f, 100.0f);
+            setStaticColor(LIGHT_BLUE.hue, LIGHT_BLUE.saturation);
             break;
           case STATIC_LIGHT_GREEN_CODE:
-            setStaticColor(150.0f, 100.0f);
+            setStaticColor(LIGHT_GREEN.hue, LIGHT_GREEN.saturation);
             break;
           case STATIC_LIGHT_YELLOW_CODE:
-            setStaticColor(60.0f, 100.0f);
+            setStaticColor(LIGHT_YELLOW.hue, LIGHT_YELLOW.saturation);
             break;
           case STATIC_LYONS_BLUE_CODE:
-            setStaticColor(270.0f, 100.0f);
+            setStaticColor(LYONS_BLUE.hue, LYONS_BLUE.saturation);
             break;
           case STATIC_MILK_WHITE_CODE:
-            setStaticColor(300.0f, 50.0f);
+            setStaticColor(MILK_WHITE.hue, MILK_WHITE.saturation);
             break;
           case STATIC_ORANGE_CODE:
-            setStaticColor(15.0f, 100.0f);
+            setStaticColor(ORANGE.hue, ORANGE.saturation);
             break;
           case STATIC_PURPLE_CODE:
-            setStaticColor(285.0f, 100.0f);
+            setStaticColor(PURPLE.hue, PURPLE.saturation);
             break;
           case STATIC_RED_CODE:
-            setStaticColor(0.0f, 100.0f);
+            setStaticColor(RED.hue, RED.saturation);
             break;
           case STATIC_SKY_BLUE_CODE:
-            setStaticColor(210.0f, 100.0f);
+            setStaticColor(SKY_BLUE.hue, SKY_BLUE.saturation);
             break;
           case STATIC_WHITE_CODE:
-            setStaticColor(0.0f, 0.0f);
+            setStaticColor(WHITE.hue, WHITE.saturation);
             break;
           case STATIC_WHITE_PINK_CODE:
-            setStaticColor(300.0f, 12.5f);
+            setStaticColor(WHITE_PINK.hue, WHITE_PINK.saturation);
             break;
           case STATIC_YELLOW_CODE:
-            setStaticColor(45.0f, 100.0f);
+            setStaticColor(YELLOW.hue, YELLOW.saturation);
             break;
         }
       }
@@ -314,7 +327,7 @@ void neopixels_loop() {
         hsv = {
           .hue = animationColors[activeAnimationIndex].hue,
           .saturation = animationColors[activeAnimationIndex].saturation,
-          .value = animationColors[activeAnimationIndex].value * homekitBrightnessCharacteristic.value.int_value
+          .value = (animationColors[activeAnimationIndex].value / 100.0f) * homekitBrightnessCharacteristic.value.int_value
         };
       } else {
         hsv = {
