@@ -183,6 +183,8 @@ uint32_t timeIntervalMs = 500;
 Timer timer(MILLIS);
 bool updateLeds = false;
 
+//------------------------------------------------------------------------------------------------------------------------
+
 void setup() {
   /* Start the serial monitor */
   Serial.begin(115200);
