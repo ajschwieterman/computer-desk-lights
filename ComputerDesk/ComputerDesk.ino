@@ -205,15 +205,15 @@ void setup() {
   WiFi.setAutoReconnect(true);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   while (!WiFi.isConnected()) {
-		delay(100);
-	}
+    delay(100);
+  }
   /* Start the HomeKit service */
   homekitOnOffCharacteristic.setter = setOnOffState;
   homekitBrightnessCharacteristic.setter = setBrightness;
   homekitSaturationCharacteristic.setter = setSaturation;
   homekitHueCharacteristic.setter = setHue;
   // homekit_storage_reset();
-	arduino_homekit_setup(&homekitConfiguration);
+  arduino_homekit_setup(&homekitConfiguration);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
@@ -441,6 +441,7 @@ void neopixels_loop() {
     neopixels.clear();
     neopixels.fill(color, 0, NEOPIXEL_COUNT);
     neopixels.show();
+    delay(50);
     /* Once finished, reset the flag to update the LEDs on the next input change */
     updateLeds = false;
   }
